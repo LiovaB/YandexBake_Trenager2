@@ -357,6 +357,26 @@
   .restart:hover { filter: brightness(.95); }
   .restart:active { transform: scale(.99); }
 
+  /* ============ КНОПКИ ФИНАЛА (добавлено) ============ */
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .result-actions .restart { flex: 1; min-width: 160px; }
+
+  .restart.secondary {
+    background: var(--white);
+    border: 2px solid var(--gold);
+    color: var(--ink);
+  }
+
+  .restart.secondary:hover {
+    background: var(--gold-bg);
+    filter: none;
+  }
+
   /* ============ МОБИЛЬНЫЕ ============ */
   @media (max-width: 600px) {
     body { padding: 0; }
@@ -396,6 +416,14 @@
 </div>
 
 <script>
+/* =========================================================
+   НАСТРОЙКА ПЕРЕХОДА НА СЛЕДУЮЩИЙ СЛАЙД
+   ========================================================= */
+/* Укажите ссылку на следующий слайд курса.
+   Если оставить пустую строку — при клике на «Далее» будет
+   отправлено postMessage родителю (для интеграции с LMS). */
+const NEXT_SLIDE_URL = ''; // например: 'https://lms.example.com/course/slide-3'
+
 /* =========================================================
    СЦЕНАРИЙ ТРЕНАЖЁРА
    ========================================================= */
@@ -763,12 +791,40 @@ function finish() {
   chatEl.appendChild(card);
   scrollDown();
 
-  const btn = document.createElement('button');
-  btn.className = 'restart';
-  btn.type = 'button';
-  btn.textContent = 'Пройти заново';
-  btn.addEventListener('click', reset);
-  optionsEl.appendChild(btn);
+  /* Контейнер с кнопками финала: «Пройти заново» + «Далее →» */
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+
+  const restartBtn = document.createElement('button');
+  restartBtn.className = 'restart secondary';
+  restartBtn.type = 'button';
+  restartBtn.textContent = 'Пройти заново';
+  restartBtn.addEventListener('click', reset);
+  actions.appendChild(restartBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'restart';
+  nextBtn.type = 'button';
+  nextBtn.textContent = 'Далее →';
+  nextBtn.addEventListener('click', goToNextSlide);
+  actions.appendChild(nextBtn);
+
+  optionsEl.appendChild(actions);
+}
+
+/* ---------- переход на следующий слайд ---------- */
+function goToNextSlide() {
+  if (NEXT_SLIDE_URL) {
+    /* Если задан URL — обычный переход */
+    window.location.href = NEXT_SLIDE_URL;
+  } else {
+    /* Иначе — сообщаем родителю (LMS) о необходимости перейти дальше */
+    try {
+      window.parent.postMessage({ type: 'NEXT_SLIDE', source: 'bike-trainer' }, '*');
+    } catch (e) {
+      console.warn('Не удалось отправить postMessage родителю:', e);
+    }
+  }
 }
 
 /* ---------- перезапуск ---------- */
