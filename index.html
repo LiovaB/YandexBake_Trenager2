@@ -357,26 +357,6 @@
   .restart:hover { filter: brightness(.95); }
   .restart:active { transform: scale(.99); }
 
-  /* ============ КНОПКИ ФИНАЛА ============ */
-  .result-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .result-actions .restart { flex: 1; min-width: 160px; }
-
-  .restart.secondary {
-    background: var(--white);
-    border: 2px solid var(--gold);
-    color: var(--ink);
-  }
-
-  .restart.secondary:hover {
-    background: var(--gold-bg);
-    filter: none;
-  }
-
   /* ============ МОБИЛЬНЫЕ ============ */
   @media (max-width: 600px) {
     body { padding: 0; }
@@ -416,26 +396,6 @@
 </div>
 
 <script>
-/* =========================================================
-   НАСТРОЙКА ПЕРЕХОДА НА СЛЕДУЮЩИЙ СЛАЙД
-   =========================================================
-   Кнопка «Продолжить →» на финальном экране тренажёра
-   пытается перейти на следующий слайд курса iSpring
-   в таком порядке:
-     1) fsplayer.api.gotoNextSlide() — если плеер iSpring доступен;
-     2) postMessage родителю — на случай встраивания без плеера;
-     3) переход по NEXT_SLIDE_URL — как крайний вариант.
-
-   На стороне iSpring:
-     • слайд с тренажёром должен быть заблокирован
-       (Slide Properties → Locking → заблокировать слайд);
-     • тренажёр встроен как Web Object.
-   ========================================================= */
-
-/* Если у вас есть прямая ссылка на следующий слайд — можно указать её.
-   В большинстве случаев оставьте пустую строку: сработает API iSpring. */
-const NEXT_SLIDE_URL = '';
-
 /* =========================================================
    СЦЕНАРИЙ ТРЕНАЖЁРА
    ========================================================= */
@@ -803,71 +763,12 @@ function finish() {
   chatEl.appendChild(card);
   scrollDown();
 
-  /* Контейнер с кнопками финала */
-  const actions = document.createElement('div');
-  actions.className = 'result-actions';
-
-  const restartBtn = document.createElement('button');
-  restartBtn.className = 'restart secondary';
-  restartBtn.type = 'button';
-  restartBtn.textContent = 'Пройти заново';
-  restartBtn.addEventListener('click', reset);
-  actions.appendChild(restartBtn);
-
-  const nextBtn = document.createElement('button');
-  nextBtn.className = 'restart';
-  nextBtn.type = 'button';
-  nextBtn.textContent = 'Продолжить →';
-  nextBtn.addEventListener('click', goToNextSlide);
-  actions.appendChild(nextBtn);
-
-  optionsEl.appendChild(actions);
-}
-
-/* =========================================================
-   ПЕРЕХОД НА СЛЕДУЮЩИЙ СЛАЙД КУРСА iSPRING
-   =========================================================
-   Пробуем по очереди:
-     1) fsplayer.api.gotoNextSlide() — родной API iSpring;
-     2) postMessage родителю — на случай интеграции;
-     3) переход по NEXT_SLIDE_URL — если ссылка задана.
-   ========================================================= */
-function goToNextSlide() {
-  var moved = false;
-
-  /* 1) Родной API iSpring */
-  try {
-    var top = window;
-    /* Ищем плеер в текущем окне и в родительских окнах (до 5 уровней) */
-    for (var i = 0; i < 5 && top; i++) {
-      if (top.fsplayer && top.fsplayer.api && typeof top.fsplayer.api.gotoNextSlide === 'function') {
-        top.fsplayer.api.gotoNextSlide();
-        moved = true;
-        break;
-      }
-      if (top.parent === top) break;
-      top = top.parent;
-    }
-  } catch (e) {
-    /* CORS / cross-origin — просто идём дальше по fallback-цепочке */
-  }
-
-  if (moved) return;
-
-  /* 2) postMessage родителю */
-  try {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'NEXT_SLIDE', source: 'bike-trainer' }, '*');
-      moved = true;
-    }
-  } catch (e) {
-    /* ignore */
-  }
-
-  /* 3) Прямая ссылка, если задана */
-  if (!moved && NEXT_SLIDE_URL) {
-    window.location.href = NEXT_SLIDE_URL;
-  }
+  const btn = document.createElement('button');
+  btn.className = 'restart';
+  btn.type = 'button';
+  btn.textContent = 'Пройти заново';
+  btn.addEventListener('click', reset);
+  optionsEl.appendChild(btn);
 }
 
 /* ---------- перезапуск ---------- */
