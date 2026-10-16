@@ -357,7 +357,7 @@
   .restart:hover { filter: brightness(.95); }
   .restart:active { transform: scale(.99); }
 
-  /* ============ КНОПКИ ФИНАЛА (добавлено) ============ */
+  /* ============ КНОПКИ ФИНАЛА ============ */
   .result-actions {
     display: flex;
     gap: 10px;
@@ -418,11 +418,23 @@
 <script>
 /* =========================================================
    НАСТРОЙКА ПЕРЕХОДА НА СЛЕДУЮЩИЙ СЛАЙД
+   =========================================================
+   Кнопка «Продолжить →» на финальном экране тренажёра
+   пытается перейти на следующий слайд курса iSpring
+   в таком порядке:
+     1) fsplayer.api.gotoNextSlide() — если плеер iSpring доступен;
+     2) postMessage родителю — на случай встраивания без плеера;
+     3) переход по NEXT_SLIDE_URL — как крайний вариант.
+
+   На стороне iSpring:
+     • слайд с тренажёром должен быть заблокирован
+       (Slide Properties → Locking → заблокировать слайд);
+     • тренажёр встроен как Web Object.
    ========================================================= */
-/* Укажите ссылку на следующий слайд курса.
-   Если оставить пустую строку — при клике на «Далее» будет
-   отправлено postMessage родителю (для интеграции с LMS). */
-const NEXT_SLIDE_URL = ''; // например: 'https://lms.example.com/course/slide-3'
+
+/* Если у вас есть прямая ссылка на следующий слайд — можно указать её.
+   В большинстве случаев оставьте пустую строку: сработает API iSpring. */
+const NEXT_SLIDE_URL = '';
 
 /* =========================================================
    СЦЕНАРИЙ ТРЕНАЖЁРА
@@ -791,7 +803,7 @@ function finish() {
   chatEl.appendChild(card);
   scrollDown();
 
-  /* Контейнер с кнопками финала: «Пройти заново» + «Далее →» */
+  /* Контейнер с кнопками финала */
   const actions = document.createElement('div');
   actions.className = 'result-actions';
 
@@ -805,25 +817,56 @@ function finish() {
   const nextBtn = document.createElement('button');
   nextBtn.className = 'restart';
   nextBtn.type = 'button';
-  nextBtn.textContent = 'Далее →';
+  nextBtn.textContent = 'Продолжить →';
   nextBtn.addEventListener('click', goToNextSlide);
   actions.appendChild(nextBtn);
 
   optionsEl.appendChild(actions);
 }
 
-/* ---------- переход на следующий слайд ---------- */
+/* =========================================================
+   ПЕРЕХОД НА СЛЕДУЮЩИЙ СЛАЙД КУРСА iSPRING
+   =========================================================
+   Пробуем по очереди:
+     1) fsplayer.api.gotoNextSlide() — родной API iSpring;
+     2) postMessage родителю — на случай интеграции;
+     3) переход по NEXT_SLIDE_URL — если ссылка задана.
+   ========================================================= */
 function goToNextSlide() {
-  if (NEXT_SLIDE_URL) {
-    /* Если задан URL — обычный переход */
-    window.location.href = NEXT_SLIDE_URL;
-  } else {
-    /* Иначе — сообщаем родителю (LMS) о необходимости перейти дальше */
-    try {
-      window.parent.postMessage({ type: 'NEXT_SLIDE', source: 'bike-trainer' }, '*');
-    } catch (e) {
-      console.warn('Не удалось отправить postMessage родителю:', e);
+  var moved = false;
+
+  /* 1) Родной API iSpring */
+  try {
+    var top = window;
+    /* Ищем плеер в текущем окне и в родительских окнах (до 5 уровней) */
+    for (var i = 0; i < 5 && top; i++) {
+      if (top.fsplayer && top.fsplayer.api && typeof top.fsplayer.api.gotoNextSlide === 'function') {
+        top.fsplayer.api.gotoNextSlide();
+        moved = true;
+        break;
+      }
+      if (top.parent === top) break;
+      top = top.parent;
     }
+  } catch (e) {
+    /* CORS / cross-origin — просто идём дальше по fallback-цепочке */
+  }
+
+  if (moved) return;
+
+  /* 2) postMessage родителю */
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'NEXT_SLIDE', source: 'bike-trainer' }, '*');
+      moved = true;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+
+  /* 3) Прямая ссылка, если задана */
+  if (!moved && NEXT_SLIDE_URL) {
+    window.location.href = NEXT_SLIDE_URL;
   }
 }
 
